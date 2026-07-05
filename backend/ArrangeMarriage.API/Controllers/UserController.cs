@@ -40,6 +40,13 @@ namespace ArrangeMarriage.API.Controllers
             return Ok("User verified successfully");
         }
 
+        [HttpGet("unverified")]
+        public async Task<IActionResult> GetUnverified()
+        {
+            var users = await _userService.GetUnverifiedUsersAsync();
+            return Ok(users);
+        }
+
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {

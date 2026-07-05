@@ -25,6 +25,36 @@ namespace ArrangeMarriage.API.Controllers
             return Ok(result);
         }
 
+        [HttpPost("create-intent")]
+        public IActionResult CreateIntent([FromBody] PaymentIntentRequest request)
+        {
+            var intentId = "pi_" + Guid.NewGuid().ToString("N").Substring(0, 16);
+            return Ok(new 
+            { 
+                ClientSecret = intentId + "_secret_12345",
+                Amount = request.Amount,
+                Status = "RequiresPaymentMethod"
+            });
+        }
+
+        [HttpPost("webhook")]
+        public async Task<IActionResult> Webhook([FromBody] WebhookPayload payload)
+        {
+            if (string.IsNullOrEmpty(payload.Event) || string.IsNullOrEmpty(payload.PaymentId))
+            {
+                return BadRequest("Invalid webhook payload");
+            }
+
+            if (payload.Event == "payment.succeeded")
+            {
+                var paymentId = Guid.Parse(payload.PaymentId);
+                var result = await _paymentService.UpdatePaymentStatusAsync(paymentId, PaymentStatus.Paid, payload.TransactionId);
+                if (!result) return NotFound("Payment record not found");
+            }
+
+            return Ok(new { Received = true });
+        }
+
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetUserPayments(Guid userId)
         {
@@ -53,5 +83,17 @@ namespace ArrangeMarriage.API.Controllers
         public Guid PaymentId { get; set; }
         public PaymentStatus Status { get; set; }
         public string? TransactionId { get; set; }
+    }
+
+    public class PaymentIntentRequest
+    {
+        public decimal Amount { get; set; }
+    }
+
+    public class WebhookPayload
+    {
+        public string Event { get; set; } = string.Empty;
+        public string PaymentId { get; set; } = string.Empty;
+        public string TransactionId { get; set; } = string.Empty;
     }
 }

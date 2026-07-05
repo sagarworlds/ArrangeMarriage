@@ -48,5 +48,12 @@ namespace ArrangeMarriage.Infrastructure.Services
             await _context.SaveChangesAsync();
             return true;
         }
+
+        public async Task<System.Collections.Generic.IEnumerable<User>> GetUnverifiedUsersAsync()
+        {
+            return await _context.Users
+                .Where(u => !u.IsVerified)
+                .ToListAsync();
+        }
     }
 }

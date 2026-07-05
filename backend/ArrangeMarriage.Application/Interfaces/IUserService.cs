@@ -11,5 +11,6 @@ namespace ArrangeMarriage.Application.Interfaces
         Task<User?> GetUserByEmailAsync(string email);
         Task<bool> UpdateUserAsync(User user);
         Task<bool> VerifyUserAsync(Guid userId);
+        Task<System.Collections.Generic.IEnumerable<User>> GetUnverifiedUsersAsync();
     }
 }

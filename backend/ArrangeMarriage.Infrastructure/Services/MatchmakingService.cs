@@ -12,10 +12,12 @@ namespace ArrangeMarriage.Infrastructure.Services
     public class MatchmakingService : IMatchmakingService
     {
         private readonly ApplicationDbContext _context;
+        private readonly IAstroService _astroService;
 
-        public MatchmakingService(ApplicationDbContext context)
+        public MatchmakingService(ApplicationDbContext context, IAstroService astroService)
         {
             _context = context;
+            _astroService = astroService;
         }
 
         public async Task<IEnumerable<Profile>> SearchMatchesAsync(Guid userId)
@@ -26,22 +28,55 @@ namespace ArrangeMarriage.Infrastructure.Services
             var pref = await _context.PartnerPreferences.FirstOrDefaultAsync(p => p.ProfileId == userProfile.ProfileId);
             if (pref == null) return new List<Profile>();
 
-            // Refined matching logic based on comprehensive partner preferences
+            // Refined matching logic: Filter basic constraints, score preferences in memory
             var matches = await _context.Profiles
                 .Where(p => p.UserId != userId)
                 .Where(p => p.Gender != userProfile.Gender)
                 .Where(p => (pref.MinAge == null || p.Dob.Year <= DateTime.UtcNow.Year - pref.MinAge)
                          && (pref.MaxAge == null || p.Dob.Year >= DateTime.UtcNow.Year - pref.MaxAge))
-                .Where(p => pref.PreferredReligion == null || p.Religion == pref.PreferredReligion)
-                .Where(p => (pref.MinHeightCm == null || p.HeightCm >= pref.MinHeightCm)
-                         && (pref.MaxHeightCm == null || p.HeightCm <= pref.MaxHeightCm))
-                .Where(p => pref.PreferredCaste == null || p.CasteCommunity == pref.PreferredCaste)
-                .Where(p => pref.PreferredLocation == null || p.City == pref.PreferredLocation || p.State == pref.PreferredLocation || p.Country == pref.PreferredLocation)
-                .Where(p => pref.MinIncome == null || p.AnnualIncome >= pref.MinIncome)
-                .Where(p => pref.PreferredEducation == null || (p.Education != null && p.Education.ToLower().Contains(pref.PreferredEducation.ToLower())))
                 .ToListAsync();
 
-            return matches;
+            foreach (var match in matches)
+            {
+                int score = 0;
+
+                // Religion Match (20 points)
+                if (pref.PreferredReligion == null || match.Religion == pref.PreferredReligion) score += 20;
+
+                // Caste Match (20 points)
+                if (pref.PreferredCaste == null || match.CasteCommunity == pref.PreferredCaste) score += 20;
+
+                // Height Match (15 points)
+                if ((pref.MinHeightCm == null || match.HeightCm >= pref.MinHeightCm) 
+                 && (pref.MaxHeightCm == null || match.HeightCm <= pref.MaxHeightCm))
+                {
+                    score += 15;
+                }
+
+                // Location Match (15 points)
+                if (pref.PreferredLocation == null 
+                 || match.City == pref.PreferredLocation 
+                 || match.State == pref.PreferredLocation 
+                 || match.Country == pref.PreferredLocation)
+                {
+                    score += 15;
+                }
+
+                // Income Match (15 points)
+                if (pref.MinIncome == null || match.AnnualIncome >= pref.MinIncome) score += 15;
+
+                // Education Match (15 points)
+                if (pref.PreferredEducation == null 
+                 || (match.Education != null && match.Education.ToLower().Contains(pref.PreferredEducation.ToLower())))
+                {
+                    score += 15;
+                }
+
+                match.MatchScore = score;
+                match.HoroscopeMatchScore = _astroService.CalculateGunaMatching(userProfile, match);
+            }
+
+            return matches.OrderByDescending(m => m.MatchScore);
         }
 
         public async Task<Proposal> SendProposalAsync(Guid senderId, Guid receiverId, string? notes)

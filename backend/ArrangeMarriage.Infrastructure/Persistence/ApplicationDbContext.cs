@@ -21,6 +21,7 @@ namespace ArrangeMarriage.Infrastructure.Persistence
         public DbSet<Meeting> Meetings { get; set; } = null!;
         public DbSet<MeetingFeedback> MeetingFeedbacks { get; set; } = null!;
         public DbSet<MarriageSuccess> MarriageSuccesses { get; set; } = null!;
+        public DbSet<Message> Messages { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -43,6 +44,18 @@ namespace ArrangeMarriage.Infrastructure.Persistence
                 .HasOne(pp => pp.Profile)
                 .WithOne(p => p.PartnerPreference)
                 .HasForeignKey<PartnerPreference>(pp => pp.ProfileId);
+
+            modelBuilder.Entity<Message>()
+                .HasOne(m => m.Sender)
+                .WithMany()
+                .HasForeignKey(m => m.SenderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Message>()
+                .HasOne(m => m.Receiver)
+                .WithMany()
+                .HasForeignKey(m => m.ReceiverId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

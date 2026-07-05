@@ -31,6 +31,12 @@ namespace ArrangeMarriage.Domain.Entities
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+        [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+        public int? MatchScore { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+        public int? HoroscopeMatchScore { get; set; }
+
         public virtual FamilyDetail? FamilyDetail { get; set; }
         public virtual PartnerPreference? PartnerPreference { get; set; }
     }
