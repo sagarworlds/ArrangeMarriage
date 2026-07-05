@@ -1,0 +1,6 @@
+@ArrangeMarriage.API_HostAddress = http://localhost:5252
+
+GET {{ArrangeMarriage.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

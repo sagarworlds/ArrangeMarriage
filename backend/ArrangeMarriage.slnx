@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="ArrangeMarriage.API/ArrangeMarriage.API.csproj" />
+  <Project Path="ArrangeMarriage.Application/ArrangeMarriage.Application.csproj" />
+  <Project Path="ArrangeMarriage.Domain/ArrangeMarriage.Domain.csproj" />
+  <Project Path="ArrangeMarriage.Infrastructure/ArrangeMarriage.Infrastructure.csproj" />
+</Solution>
