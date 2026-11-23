@@ -1,8 +1,13 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
+using ArrangeMarriage.API.Dtos;
+using ArrangeMarriage.API.Security;
 using ArrangeMarriage.Application.Interfaces;
 using ArrangeMarriage.Domain.Entities;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace ArrangeMarriage.API.Controllers
 {
@@ -11,27 +16,62 @@ namespace ArrangeMarriage.API.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
+        private readonly IPasswordHasher _passwordHasher;
+        private readonly ITokenService _tokenService;
+        private readonly ILogger<UserController> _logger;
 
-        public UserController(IUserService userService)
+        public UserController(
+            IUserService userService,
+            IPasswordHasher passwordHasher,
+            ITokenService tokenService,
+            ILogger<UserController> logger)
         {
             _userService = userService;
+            _passwordHasher = passwordHasher;
+            _tokenService = tokenService;
+            _logger = logger;
         }
 
+        [AllowAnonymous]
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] User user)
+        public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
-            var createdUser = await _userService.CreateUserAsync(user);
-            return Ok(createdUser);
+            // Public sign-up must not be able to mint Admin/Staff accounts.
+            if (request.Role is UserRole.Admin or UserRole.Staff)
+            {
+                return BadRequest("This role cannot be self-registered.");
+            }
+
+            if (await _userService.GetUserByEmailAsync(request.Email) != null)
+            {
+                return Conflict("An account with this email already exists.");
+            }
+
+            var user = new User
+            {
+                Username = request.Username,
+                Email = request.Email,
+                PhoneNumber = request.PhoneNumber,
+                Role = request.Role,
+                PasswordHash = _passwordHasher.Hash(request.Password)
+            };
+
+            var created = await _userService.CreateUserAsync(user);
+            return Ok(UserResponse.From(created));
         }
 
+        [Authorize]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetUser(Guid id)
         {
+            if (!User.CanAccessUser(id)) return Forbid();
+
             var user = await _userService.GetUserByIdAsync(id);
             if (user == null) return NotFound();
-            return Ok(user);
+            return Ok(UserResponse.From(user));
         }
 
+        [Authorize(Roles = "Admin,Staff")]
         [HttpPut("verify/{id}")]
         public async Task<IActionResult> VerifyUser(Guid id)
         {
@@ -40,51 +80,32 @@ namespace ArrangeMarriage.API.Controllers
             return Ok("User verified successfully");
         }
 
+        [Authorize(Roles = "Admin,Staff")]
         [HttpGet("unverified")]
         public async Task<IActionResult> GetUnverified()
         {
             var users = await _userService.GetUnverifiedUsersAsync();
-            return Ok(users);
+            return Ok(users.Select(UserResponse.From));
         }
 
+        [AllowAnonymous]
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             var user = await _userService.GetUserByEmailAsync(request.Email);
-            if (user == null) return Unauthorized("Invalid email or password");
 
-            // Simple comparison for standard hashes/passwords
-            if (user.PasswordHash != request.Password) 
+            // Same message for unknown email and wrong password to avoid account enumeration.
+            if (user == null || !_passwordHasher.Verify(request.Password, user.PasswordHash))
             {
+                _logger.LogWarning("Failed login attempt for {Email}", request.Email);
                 return Unauthorized("Invalid email or password");
             }
 
-            var tokenHandler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
-            var key = System.Text.Encoding.UTF8.GetBytes("SUPER_SECRET_KEY_FOR_ARRANGE_MARRIAGE_12345!");
-            var tokenDescriptor = new Microsoft.IdentityModel.Tokens.SecurityTokenDescriptor
+            return Ok(new LoginResponse
             {
-                Subject = new System.Security.Claims.ClaimsIdentity(new[]
-                {
-                    new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, user.UserId.ToString()),
-                    new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Email, user.Email),
-                    new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, user.Role.ToString())
-                }),
-                Expires = DateTime.UtcNow.AddDays(7),
-                SigningCredentials = new Microsoft.IdentityModel.Tokens.SigningCredentials(new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(key), Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256Signature),
-                Issuer = "ArrangeMarriageIssuer",
-                Audience = "ArrangeMarriageAudience"
-            };
-
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            var tokenString = tokenHandler.WriteToken(token);
-
-            return Ok(new { Token = tokenString, User = user });
+                Token = _tokenService.CreateToken(user),
+                User = UserResponse.From(user)
+            });
         }
-    }
-
-    public class LoginRequest
-    {
-        public string Email { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
     }
 }

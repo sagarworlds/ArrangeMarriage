@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using ArrangeMarriage.API.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ArrangeMarriage.Application.Interfaces;
 using ArrangeMarriage.Domain.Entities;
@@ -8,6 +10,7 @@ using ArrangeMarriage.Domain.Entities;
 namespace ArrangeMarriage.API.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/[controller]")]
     public class MeetingController : ControllerBase
     {
@@ -18,6 +21,7 @@ namespace ArrangeMarriage.API.Controllers
             _meetingService = meetingService;
         }
 
+        [Authorize(Roles = "Admin,Staff")]
         [HttpPost("schedule")]
         public async Task<IActionResult> ScheduleMeeting([FromBody] Meeting meeting)
         {
@@ -25,6 +29,7 @@ namespace ArrangeMarriage.API.Controllers
             return Ok(result);
         }
 
+        [Authorize(Roles = "Admin,Staff")]
         [HttpPut("status")]
         public async Task<IActionResult> UpdateStatus([FromBody] MeetingStatusUpdate request)
         {
@@ -44,10 +49,13 @@ namespace ArrangeMarriage.API.Controllers
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetUserMeetings(Guid userId)
         {
+            if (!User.CanAccessUser(userId)) return Forbid();
+
             var meetings = await _meetingService.GetMeetingsForUserAsync(userId);
             return Ok(meetings);
         }
 
+        [Authorize(Roles = "Admin,Staff")]
         [HttpPost("success")]
         public async Task<IActionResult> RecordSuccess([FromBody] MarriageSuccess success)
         {

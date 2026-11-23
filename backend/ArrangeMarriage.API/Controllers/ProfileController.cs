@@ -1,5 +1,7 @@
 using System;
 using System.Threading.Tasks;
+using ArrangeMarriage.API.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ArrangeMarriage.Application.Interfaces;
 using ArrangeMarriage.Domain.Entities;
@@ -7,6 +9,7 @@ using ArrangeMarriage.Domain.Entities;
 namespace ArrangeMarriage.API.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/[controller]")]
     public class ProfileController : ControllerBase
     {
@@ -20,6 +23,8 @@ namespace ArrangeMarriage.API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateProfile([FromBody] Profile profile)
         {
+            if (!User.CanAccessUser(profile.UserId)) return Forbid();
+
             var createdProfile = await _profileService.CreateProfileAsync(profile);
             return Ok(createdProfile);
         }
@@ -27,6 +32,8 @@ namespace ArrangeMarriage.API.Controllers
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetProfile(Guid userId)
         {
+            if (!User.CanAccessUser(userId)) return Forbid();
+
             var profile = await _profileService.GetProfileByUserIdAsync(userId);
             if (profile == null) return NotFound();
             return Ok(profile);
@@ -35,6 +42,8 @@ namespace ArrangeMarriage.API.Controllers
         [HttpPut]
         public async Task<IActionResult> UpdateProfile([FromBody] Profile profile)
         {
+            if (!User.CanAccessUser(profile.UserId)) return Forbid();
+
             var result = await _profileService.UpdateProfileAsync(profile);
             if (!result) return BadRequest("Could not update profile");
             return Ok("Profile updated successfully");

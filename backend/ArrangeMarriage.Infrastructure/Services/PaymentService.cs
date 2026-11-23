@@ -43,6 +43,7 @@ namespace ArrangeMarriage.Infrastructure.Services
             payment.Status = status;
             payment.TransactionId = transactionId;
             payment.PaymentDate = DateTime.UtcNow;
+            payment.UpdatedAt = DateTime.UtcNow;
             var result = await _context.SaveChangesAsync();
             return result > 0;
         }
@@ -50,7 +51,7 @@ namespace ArrangeMarriage.Infrastructure.Services
         public async Task<byte[]> GenerateReceiptPdfAsync(Guid paymentId)
         {
             var payment = await _context.Payments.FindAsync(paymentId);
-            if (payment == null) throw new Exception("Payment not found");
+            if (payment == null) throw new KeyNotFoundException($"Payment {paymentId} not found.");
 
             var document = new PdfDocument();
             var page = document.AddPage();

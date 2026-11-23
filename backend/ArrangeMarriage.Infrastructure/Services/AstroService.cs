@@ -1,28 +1,35 @@
 using System;
+using System.Security.Cryptography;
+using System.Text;
+using ArrangeMarriage.Application.Interfaces;
 using ArrangeMarriage.Domain.Entities;
 
 namespace ArrangeMarriage.Infrastructure.Services
 {
-    public interface IAstroService
-    {
-        int CalculateGunaMatching(Profile profileA, Profile profileB);
-    }
-
     public class AstroService : IAstroService
     {
+        private const int MaxScore = 36;
+        private const int MinSimulatedScore = 14;
+        private const int NeutralScore = 18;
+
+        /// <inheritdoc />
         public int CalculateGunaMatching(Profile profileA, Profile profileB)
         {
-            // Astrological matching algorithm simulating Guna Milap (maximum 36 points).
-            // A score of 18 or above is considered compatible.
-            // Uses a deterministic hash of user names so the score remains consistent for a pair.
             if (string.IsNullOrEmpty(profileA.FullName) || string.IsNullOrEmpty(profileB.FullName))
             {
-                return 18; // Default neutral match score
+                return NeutralScore;
             }
 
-            int hash = (profileA.FullName + profileB.FullName).GetHashCode();
-            var random = new Random(hash);
-            return random.Next(14, 36);
+            // string.GetHashCode() is randomized per process in .NET, which made scores change on
+            // every restart. SHA-256 is stable. Names are ordered so A-B and B-A score identically.
+            var ordered = string.CompareOrdinal(profileA.FullName, profileB.FullName) <= 0
+                ? profileA.FullName + "|" + profileB.FullName
+                : profileB.FullName + "|" + profileA.FullName;
+            var digest = SHA256.HashData(Encoding.UTF8.GetBytes(ordered));
+            var value = BitConverter.ToUInt32(digest, 0);
+
+            // Range is inclusive of the 36-point maximum.
+            return MinSimulatedScore + (int)(value % (MaxScore - MinSimulatedScore + 1));
         }
     }
 }

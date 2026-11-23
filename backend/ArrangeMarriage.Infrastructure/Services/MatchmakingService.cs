@@ -29,11 +29,18 @@ namespace ArrangeMarriage.Infrastructure.Services
             if (pref == null) return new List<Profile>();
 
             // Refined matching logic: Filter basic constraints, score preferences in memory
+            // Convert the age range into a birth-date window (older => earlier date). Comparing full
+            // dates rather than years avoids off-by-one errors around birthdays.
+            var today = DateTime.UtcNow.Date;
+            DateTime? latestDob = pref.MinAge.HasValue ? today.AddYears(-pref.MinAge.Value) : null;
+            DateTime? earliestDob = pref.MaxAge.HasValue ? today.AddYears(-(pref.MaxAge.Value + 1)).AddDays(1) : null;
+
             var matches = await _context.Profiles
+                .AsNoTracking() // scores are transient view data and must never be persisted
                 .Where(p => p.UserId != userId)
                 .Where(p => p.Gender != userProfile.Gender)
-                .Where(p => (pref.MinAge == null || p.Dob.Year <= DateTime.UtcNow.Year - pref.MinAge)
-                         && (pref.MaxAge == null || p.Dob.Year >= DateTime.UtcNow.Year - pref.MaxAge))
+                .Where(p => latestDob == null || p.Dob <= latestDob)
+                .Where(p => earliestDob == null || p.Dob >= earliestDob)
                 .ToListAsync();
 
             foreach (var match in matches)

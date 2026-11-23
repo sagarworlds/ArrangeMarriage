@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using ArrangeMarriage.API.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ArrangeMarriage.Application.Interfaces;
 using ArrangeMarriage.Domain.Entities;
@@ -8,6 +10,7 @@ using ArrangeMarriage.Domain.Entities;
 namespace ArrangeMarriage.API.Controllers
 {
     [ApiController]
+    [Authorize]
     [Route("api/[controller]")]
     public class MatchmakingController : ControllerBase
     {
@@ -21,6 +24,8 @@ namespace ArrangeMarriage.API.Controllers
         [HttpGet("search/{userId}")]
         public async Task<IActionResult> SearchMatches(Guid userId)
         {
+            if (!User.CanAccessUser(userId)) return Forbid();
+
             var matches = await _matchmakingService.SearchMatchesAsync(userId);
             return Ok(matches);
         }
@@ -28,10 +33,13 @@ namespace ArrangeMarriage.API.Controllers
         [HttpPost("propose")]
         public async Task<IActionResult> SendProposal([FromBody] ProposalRequest request)
         {
+            if (!User.CanAccessUser(request.SenderId)) return Forbid();
+
             var proposal = await _matchmakingService.SendProposalAsync(request.SenderId, request.ReceiverId, request.Notes);
             return Ok(proposal);
         }
 
+        [Authorize(Roles = "Admin,Staff")]
         [HttpPut("status")]
         public async Task<IActionResult> UpdateStatus([FromBody] ProposalStatusUpdate request)
         {
@@ -43,6 +51,8 @@ namespace ArrangeMarriage.API.Controllers
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetUserProposals(Guid userId)
         {
+            if (!User.CanAccessUser(userId)) return Forbid();
+
             var proposals = await _matchmakingService.GetProposalsForUserAsync(userId);
             return Ok(proposals);
         }
