@@ -23,6 +23,9 @@ namespace ArrangeMarriage.Infrastructure.Services
 
         public async Task<Payment> ProcessPaymentAsync(Payment payment)
         {
+            // A client-chosen id could collide with (and so interfere with) someone else's payment record.
+            payment.PaymentId = Guid.NewGuid();
+            payment.CreatedAt = payment.UpdatedAt = DateTime.UtcNow;
             _context.Payments.Add(payment);
             await _context.SaveChangesAsync();
             return payment;

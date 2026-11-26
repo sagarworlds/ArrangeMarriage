@@ -95,6 +95,44 @@ namespace ArrangeMarriage.Tests.Api
             Assert.Equal(PaymentStatus.Paid, (await GetPaymentAsync(created.PaymentId)).Status);
         }
 
+        [Fact]
+        public async Task ProcessPayment_IgnoresAClientChosenPaymentId_SoAnExistingPaymentIsNeverTouched()
+        {
+            var victim = await _factory.CreateUserAsync();
+            var attacker = await _factory.CreateUserAsync();
+            var victimPaymentId = await SeedPaymentAsync(victim.UserId, PaymentStatus.Paid);
+            using var client = _factory.ClientFor(attacker);
+
+            var response = await client.PostAsJsonAsync("/api/payment/process",
+                new { paymentId = victimPaymentId, userId = attacker.UserId, amount = 1m, type = PaymentType.Cash });
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var victimPayment = await GetPaymentAsync(victimPaymentId);
+            Assert.Equal(victim.UserId, victimPayment.UserId);
+            Assert.Equal(2500m, victimPayment.Amount);
+            Assert.Equal(PaymentStatus.Paid, victimPayment.Status);
+            var created = (await response.Content.ReadFromJsonAsync<Payment>())!;
+            Assert.NotEqual(victimPaymentId, created.PaymentId);
+        }
+
+        [Fact]
+        public async Task ProcessPayment_CannotSmuggleInAnAccount_ThroughANestedUser()
+        {
+            var member = await _factory.CreateUserAsync();
+            var smuggledId = Guid.NewGuid();
+            using var client = _factory.ClientFor(member);
+
+            await client.PostAsJsonAsync("/api/payment/process", new
+            {
+                userId = member.UserId,
+                amount = 100m,
+                type = PaymentType.Cash,
+                user = new { userId = smuggledId, username = "smuggled-pay", email = "smuggled-pay@example.com", phoneNumber = "9777777777", passwordHash = "x", role = (int)UserRole.Admin, isVerified = true }
+            });
+
+            Assert.False(await _factory.WithDbAsync(db => db.Users.AnyAsync(u => u.UserId == smuggledId)));
+        }
+
         // ---- reading / status ----------------------------------------------------------------------------------
 
         [Fact]

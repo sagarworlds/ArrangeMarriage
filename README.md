@@ -112,6 +112,18 @@ dotnet test
 - In any other environment you must provide `Jwt__Key` (at least 32 characters). The API refuses to start without it. Use environment variables or `dotnet user-secrets`; never commit real secrets.
 - Set `Payments__WebhookSecret` to the shared secret used to sign payment-provider webhooks (HMAC-SHA256 of the raw request body, sent as a hex string in the `X-Signature` header). Without it, `/api/payment/webhook` returns `503`.
 
+#### Access rules
+
+Every route except registration, login and the signed payment webhook needs a bearer token. Beyond that:
+
+| Area | Who may act |
+|------|-------------|
+| Profile, family details, partner preferences | The profile's owner, or staff. The owner is read from the stored record, never from ids in the request body. |
+| Proposals | The sender creates it (never to themselves, and the receiver must exist). The receiver may mark it viewed, accepted or rejected until the matchmaker moves it on; only staff set the later stages. |
+| Meetings | Staff schedule them. Only the two people who met (or staff on their behalf) may leave feedback, once each, rated 1 to 5. |
+| Payments, receipts, chat history | The person concerned, or staff. |
+| Request bodies | Related objects nested in a body (for example a `user` inside a profile) are ignored. Send ids instead. |
+
 ### Website Startup
 
 1. Navigate to the `website/` directory.

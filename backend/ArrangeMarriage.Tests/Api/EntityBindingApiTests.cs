@@ -82,6 +82,20 @@ namespace ArrangeMarriage.Tests.Api
         }
 
         [Fact]
+        public async Task ScheduleMeeting_ForAnUnknownProposal_Returns404_AndStoresNothing()
+        {
+            var staff = await _factory.CreateUserAsync(UserRole.Staff);
+            var unknownProposalId = Guid.NewGuid();
+            using var client = _factory.ClientFor(staff);
+
+            var response = await client.PostAsJsonAsync("/api/meeting/schedule",
+                new { proposalId = unknownProposalId, meetingDate = "2027-02-01T10:00:00Z" });
+
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.False(await _factory.WithDbAsync(db => db.Meetings.AnyAsync(m => m.ProposalId == unknownProposalId)));
+        }
+
+        [Fact]
         public async Task AddMeetingFeedback_AcceptsMeetingAndUserIds()
         {
             var member = await _factory.CreateUserAsync();

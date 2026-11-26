@@ -20,6 +20,14 @@ namespace ArrangeMarriage.Infrastructure.Services
 
         public async Task<Meeting> ScheduleMeetingAsync(Meeting meeting)
         {
+            if (!await _context.Proposals.AnyAsync(p => p.ProposalId == meeting.ProposalId))
+            {
+                throw new KeyNotFoundException($"Proposal {meeting.ProposalId} not found.");
+            }
+
+            // Identity and creation time are the server's to decide, not the client's.
+            meeting.MeetingId = Guid.NewGuid();
+            meeting.CreatedAt = DateTime.UtcNow;
             _context.Meetings.Add(meeting);
             await _context.SaveChangesAsync();
             return meeting;
@@ -37,9 +45,23 @@ namespace ArrangeMarriage.Infrastructure.Services
 
         public async Task<bool> AddFeedbackAsync(MeetingFeedback feedback)
         {
+            feedback.FeedbackId = Guid.NewGuid();
+            feedback.CreatedAt = DateTime.UtcNow;
             _context.MeetingFeedbacks.Add(feedback);
             var result = await _context.SaveChangesAsync();
             return result > 0;
+        }
+
+        public async Task<Meeting?> GetMeetingByIdAsync(Guid meetingId)
+        {
+            return await _context.Meetings
+                .Include(m => m.Proposal)
+                .FirstOrDefaultAsync(m => m.MeetingId == meetingId);
+        }
+
+        public async Task<bool> HasFeedbackAsync(Guid meetingId, Guid userId)
+        {
+            return await _context.MeetingFeedbacks.AnyAsync(f => f.MeetingId == meetingId && f.UserId == userId);
         }
 
         public async Task<IEnumerable<Meeting>> GetMeetingsForUserAsync(Guid userId)
@@ -52,6 +74,8 @@ namespace ArrangeMarriage.Infrastructure.Services
 
         public async Task<MarriageSuccess> RecordMarriageSuccessAsync(MarriageSuccess success)
         {
+            success.SuccessId = Guid.NewGuid();
+            success.CreatedAt = DateTime.UtcNow;
             _context.MarriageSuccesses.Add(success);
             await _context.SaveChangesAsync();
             return success;

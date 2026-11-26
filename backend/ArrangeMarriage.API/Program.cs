@@ -7,15 +7,25 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using ArrangeMarriage.API.Hubs;
 using ArrangeMarriage.API.Security;
+using ArrangeMarriage.API.Serialization;
 using ArrangeMarriage.API.Validation;
+using System.Text.Json.Serialization.Metadata;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers(options =>
 {
-    // Entities are bound straight from request bodies; their navigation properties must not be required.
+    // Entities are bound straight from request bodies; their navigation properties must not be required...
     options.ModelMetadataDetailsProviders.Add(new EntityNavigationValidationMetadataProvider());
+})
+.AddJsonOptions(options =>
+{
+    // ...and must not be filled in from the body either (see IgnoreEntityNavigationsOnInput).
+    options.JsonSerializerOptions.TypeInfoResolver = new DefaultJsonTypeInfoResolver
+    {
+        Modifiers = { IgnoreEntityNavigationsOnInput.Modify }
+    };
 });
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();

@@ -25,8 +25,14 @@ namespace ArrangeMarriage.API.Controllers
         [HttpPost("schedule")]
         public async Task<IActionResult> ScheduleMeeting([FromBody] Meeting meeting)
         {
-            var result = await _meetingService.ScheduleMeetingAsync(meeting);
-            return Ok(result);
+            try
+            {
+                return Ok(await _meetingService.ScheduleMeetingAsync(meeting));
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound("Proposal not found.");
+            }
         }
 
         [Authorize(Roles = "Admin,Staff")]
@@ -41,6 +47,20 @@ namespace ArrangeMarriage.API.Controllers
         [HttpPost("feedback")]
         public async Task<IActionResult> AddFeedback([FromBody] MeetingFeedback feedback)
         {
+            var meeting = await _meetingService.GetMeetingByIdAsync(feedback.MeetingId);
+            if (meeting == null) return NotFound("Meeting not found.");
+
+            // Feedback is written in the name of feedback.UserId, so the caller must be that person (or staff recording
+            // it for them), and that person must be one of the two who actually met.
+            if (!User.CanAccessUser(feedback.UserId)) return Forbid();
+            if (feedback.UserId != meeting.Proposal.SenderId && feedback.UserId != meeting.Proposal.ReceiverId) return Forbid();
+
+            if (feedback.Rating is < 1 or > 5) return BadRequest("Rating must be between 1 and 5.");
+            if (await _meetingService.HasFeedbackAsync(feedback.MeetingId, feedback.UserId))
+            {
+                return Conflict("Feedback has already been left for this meeting.");
+            }
+
             var result = await _meetingService.AddFeedbackAsync(feedback);
             if (!result) return BadRequest("Could not add feedback");
             return Ok("Feedback added successfully");
