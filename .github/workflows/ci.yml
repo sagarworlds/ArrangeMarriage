@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [master]
+
+# Newer pushes to the same ref make older in-flight runs redundant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (build & test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore backend/ArrangeMarriage.slnx
+
+      - name: Build
+        run: dotnet build backend/ArrangeMarriage.slnx --configuration Release --no-restore
+
+      # The repo has no test projects yet. Guarding on their existence keeps CI green today
+      # and starts enforcing tests automatically as soon as a *Tests.csproj is added.
+      - name: Test
+        run: |
+          if find backend -name '*Tests.csproj' | grep -q .; then
+            dotnet test backend/ArrangeMarriage.slnx --configuration Release --no-build --verbosity normal
+          else
+            echo "No test projects found; skipping tests."
+          fi
