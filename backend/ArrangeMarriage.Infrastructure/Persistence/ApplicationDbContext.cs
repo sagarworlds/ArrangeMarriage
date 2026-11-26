@@ -27,6 +27,14 @@ namespace ArrangeMarriage.Infrastructure.Persistence
         {
             base.OnModelCreating(modelBuilder);
 
+            // EF's convention only recognises "Id" or "<TypeName>Id" as a primary key. These entities use
+            // shorter key names (matching the SQL schema), so without explicit keys EF fails to build the
+            // model and every database call throws.
+            modelBuilder.Entity<MarriageSuccess>().HasKey(e => e.SuccessId);
+            modelBuilder.Entity<MeetingFeedback>().HasKey(e => e.FeedbackId);
+            modelBuilder.Entity<MembershipPackage>().HasKey(e => e.PackageId);
+            modelBuilder.Entity<PartnerPreference>().HasKey(e => e.PreferenceId);
+
             modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
             modelBuilder.Entity<User>().HasIndex(u => u.PhoneNumber).IsUnique();
 

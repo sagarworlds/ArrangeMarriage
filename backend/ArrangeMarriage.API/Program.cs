@@ -7,11 +7,16 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using ArrangeMarriage.API.Hubs;
 using ArrangeMarriage.API.Security;
+using ArrangeMarriage.API.Validation;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    // Entities are bound straight from request bodies; their navigation properties must not be required.
+    options.ModelMetadataDetailsProviders.Add(new EntityNavigationValidationMetadataProvider());
+});
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -105,3 +110,6 @@ app.MapControllers();
 app.MapHub<ChatHub>("/chatHub");
 
 app.Run();
+
+// Exposes the generated entry-point class so integration tests can host the app via WebApplicationFactory.
+public partial class Program { }

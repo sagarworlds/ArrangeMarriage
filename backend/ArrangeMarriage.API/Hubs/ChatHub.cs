@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using ArrangeMarriage.API.Security;
 using ArrangeMarriage.Domain.Entities;
@@ -19,15 +20,13 @@ namespace ArrangeMarriage.API.Hubs
             _context = context;
         }
 
-        /// <summary>Joins the caller to their own group, derived from the token so nobody can listen on another user's group.</summary>
-        public override async Task OnConnectedAsync()
-        {
-            var userId = Context.User?.GetUserId() ?? throw new HubException("Unauthenticated.");
-            await Groups.AddToGroupAsync(Context.ConnectionId, userId.ToString());
-            await base.OnConnectedAsync();
-        }
-
-        /// <summary>Sends a message from the authenticated caller (sender is never taken from the client).</summary>
+        /// <summary>
+        /// Sends a message from the authenticated caller to <paramref name="receiverId"/>. The sender is always
+        /// taken from the caller's token, never from client input.
+        /// </summary>
+        /// <param name="receiverId">Id of the receiving user (a GUID string).</param>
+        /// <param name="content">Message text, 1 to <see cref="MaxMessageLength"/> characters.</param>
+        /// <exception cref="HubException">The caller is unauthenticated, the receiver id is invalid, or the content is empty or too long.</exception>
         public async Task SendMessage(string receiverId, string content)
         {
             var senderGuid = Context.User?.GetUserId() ?? throw new HubException("Unauthenticated.");
@@ -50,8 +49,13 @@ namespace ArrangeMarriage.API.Hubs
 
             // Project to a plain shape so the broadcast doesn't serialize navigation properties.
             var payload = new { message.MessageId, message.SenderId, message.ReceiverId, message.Content, message.CreatedAt };
-            await Clients.Group(senderGuid.ToString()).SendAsync("ReceiveMessage", payload);
-            await Clients.Group(receiverGuid.ToString()).SendAsync("ReceiveMessage", payload);
+
+            // Route by authenticated user id instead of hand-managed groups. SignalR registers a connection under
+            // its user id as part of connecting, whereas joining a group in OnConnectedAsync runs *after* the
+            // client's StartAsync has already completed, so a just-connected user could miss messages.
+            // Distinct() so a message to oneself is delivered once, not twice.
+            var recipients = new[] { senderGuid.ToString(), receiverGuid.ToString() }.Distinct().ToList();
+            await Clients.Users(recipients).SendAsync("ReceiveMessage", payload);
         }
     }
 }

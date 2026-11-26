@@ -42,9 +42,11 @@ namespace ArrangeMarriage.API.Controllers
                 return BadRequest("This role cannot be self-registered.");
             }
 
-            if (await _userService.GetUserByEmailAsync(request.Email) != null)
+            // The database enforces these as unique; checking first turns a constraint violation (HTTP 500) into a clear 409.
+            var duplicate = await _userService.FindDuplicateIdentifierAsync(request.Username, request.Email, request.PhoneNumber);
+            if (duplicate != null)
             {
-                return Conflict("An account with this email already exists.");
+                return Conflict($"An account with this {duplicate} already exists.");
             }
 
             var user = new User

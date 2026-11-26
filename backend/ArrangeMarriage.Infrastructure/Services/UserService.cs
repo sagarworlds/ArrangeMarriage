@@ -33,6 +33,14 @@ namespace ArrangeMarriage.Infrastructure.Services
             return await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
         }
 
+        public async Task<string?> FindDuplicateIdentifierAsync(string username, string email, string phoneNumber)
+        {
+            if (await _context.Users.AnyAsync(u => u.Email == email)) return "email";
+            if (await _context.Users.AnyAsync(u => u.Username == username)) return "username";
+            if (await _context.Users.AnyAsync(u => u.PhoneNumber == phoneNumber)) return "phone number";
+            return null;
+        }
+
         public async Task<bool> UpdateUserAsync(User user)
         {
             _context.Users.Update(user);

@@ -1,4 +1,5 @@
 using System;
+using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text;
 using ArrangeMarriage.Application.Interfaces;
@@ -26,7 +27,7 @@ namespace ArrangeMarriage.Infrastructure.Services
                 ? profileA.FullName + "|" + profileB.FullName
                 : profileB.FullName + "|" + profileA.FullName;
             var digest = SHA256.HashData(Encoding.UTF8.GetBytes(ordered));
-            var value = BitConverter.ToUInt32(digest, 0);
+            var value = BinaryPrimitives.ReadUInt32LittleEndian(digest);
 
             // Range is inclusive of the 36-point maximum.
             return MinSimulatedScore + (int)(value % (MaxScore - MinSimulatedScore + 1));

@@ -100,6 +100,18 @@ dotnet run --project ArrangeMarriage.API
 
 5. Swagger docs: `http://localhost:5000/swagger` (or the URL shown in console).
 
+6. Run the tests (unit tests plus in-process API tests; no database needed):
+
+```bash
+dotnet test
+```
+
+#### Secrets and configuration
+
+- In `Development`, the API uses a throwaway signing key from `appsettings.Development.json`.
+- In any other environment you must provide `Jwt__Key` (at least 32 characters). The API refuses to start without it. Use environment variables or `dotnet user-secrets`; never commit real secrets.
+- Set `Payments__WebhookSecret` to the shared secret used to sign payment-provider webhooks (HMAC-SHA256 of the raw request body, sent as a hex string in the `X-Signature` header). Without it, `/api/payment/webhook` returns `503`.
+
 ### Website Startup
 
 1. Navigate to the `website/` directory.

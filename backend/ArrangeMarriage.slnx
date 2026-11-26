@@ -3,4 +3,5 @@
   <Project Path="ArrangeMarriage.Application/ArrangeMarriage.Application.csproj" />
   <Project Path="ArrangeMarriage.Domain/ArrangeMarriage.Domain.csproj" />
   <Project Path="ArrangeMarriage.Infrastructure/ArrangeMarriage.Infrastructure.csproj" />
+  <Project Path="ArrangeMarriage.Tests/ArrangeMarriage.Tests.csproj" />
 </Solution>

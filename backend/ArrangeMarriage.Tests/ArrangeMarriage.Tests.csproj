@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <!-- Kept on the same EF Core version as the application so tests exercise the same query translation. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ArrangeMarriage.API\ArrangeMarriage.API.csproj" />
+    <ProjectReference Include="..\ArrangeMarriage.Application\ArrangeMarriage.Application.csproj" />
+    <ProjectReference Include="..\ArrangeMarriage.Domain\ArrangeMarriage.Domain.csproj" />
+    <ProjectReference Include="..\ArrangeMarriage.Infrastructure\ArrangeMarriage.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

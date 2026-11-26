@@ -4,16 +4,19 @@ using ArrangeMarriage.Domain.Entities;
 
 namespace ArrangeMarriage.API.Dtos
 {
-    /// <summary>Public registration payload. Role/verification are deliberately not client-settable beyond the allowed roles.</summary>
+    /// <summary>
+    /// Public registration payload. Length limits mirror docs/database_schema.sql. Role/verification are
+    /// deliberately not client-settable beyond the allowed roles.
+    /// </summary>
     public class RegisterRequest
     {
-        [Required, StringLength(100, MinimumLength = 3)]
+        [Required, StringLength(50, MinimumLength = 3)]
         public string Username { get; set; } = string.Empty;
 
-        [Required, EmailAddress, StringLength(254)]
+        [Required, EmailAddress, StringLength(100)]
         public string Email { get; set; } = string.Empty;
 
-        [Phone, StringLength(20)]
+        [Required, Phone, StringLength(20)]
         public string PhoneNumber { get; set; } = string.Empty;
 
         [Required, StringLength(128, MinimumLength = 8)]
